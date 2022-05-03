@@ -1,6 +1,6 @@
 #include <FastLED.h>
 
-// How many leds in your strip?
+// Définir le nombre de LED sur mon anneau
 #define NUM_LEDS 12
 
 // For led chips like WS2812, which have a data line, ground, and power, you just
@@ -16,7 +16,7 @@
 CRGB leds[NUM_LEDS];
 
 int nbcligno = 0; // variable pour compter le nombre de clignotement
-int Nbtour = 0;
+int Nbtour = 0; // variable pour compter le nombre de tour de l'ensemble du cycle
 
 
 void setup() {
@@ -62,14 +62,15 @@ void setup() {
   // FastLED.addLeds<APA102, DATA_PIN, CLOCK_PIN, RGB>(leds, NUM_LEDS);  // BGR ordering is typical
   // FastLED.addLeds<SK9822, DATA_PIN, CLOCK_PIN, RGB>(leds, NUM_LEDS);  // BGR ordering is typical
 
-  FastLED.setMaxPowerInVoltsAndMilliamps(5, 40); // réglage de la puissance des led
+  FastLED.setMaxPowerInVoltsAndMilliamps(5, 40); // réglage pour limiter l'amperage de sortie pour allumer des led (ici 40mA)
 
-  Serial.begin(9600);
+  Serial.begin(9600); // initialisation de mon moniteur série (m'a servi pour le debuggage)
 }
 
 void loop() {
-
+// je crée une boucle if pour ma boucle totale s'effectue le nombre de fois désiré (ici 1 tour) et un else qui sera vide pour que rien ne se fasse après (on aurait pu utiliser un exit(0)
   if (Nbtour < 1 ) {
+    // Une boucle for pour allumer toutes les LED du cercle en jaune (reproduit 5 fois pour chacune des couleurs)
     for (int dot = 0; dot < NUM_LEDS; dot++) {
       leds[dot] = CRGB::Yellow;
       FastLED.show();
@@ -95,6 +96,7 @@ void loop() {
       FastLED.show();
       delay(30);
     }
+    // Une boucle while pour compter les clignotements à la fin du chargement (2 fois car le 3eme doit finir avec un fade)
     while (nbcligno < 2 ) {
         fill_solid (leds, NUM_LEDS, CRGB::OrangeRed);
         FastLED.show();
@@ -104,7 +106,8 @@ void loop() {
         delay(150);
       nbcligno++;
     }
-    fill_solid (leds, NUM_LEDS, CRGB::Red);
+    // Mon 3eme clignotement en utilisant la fonction fadeToBlackBy (valeur de reglage du noir a 255)
+    fill_solid (leds, NUM_LEDS, CRGB::OrangeRed);
     FastLED.show();
     delay(300);
     fadeToBlackBy( leds, NUM_LEDS, 255);
