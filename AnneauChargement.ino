@@ -1,3 +1,11 @@
+/********************************************************************************************
+**Consignes de l'exercice :                                                               ***
+** - La lumière doit réaliser 5 tour, Chaque tour est de couleur différente.              ***
+** - A la fin des 5 tours, toutes les leds doivent clignoter 3 fois.                      ***
+** - Le programme ne doit s'exécuter qu’une seule fois.                                   ***
+** - bonus : Au dernier clignotement, l’anneau s’éteint en “fade out”(fondu vers le noir) ***
+********************************************************************************************/
+
 #include <FastLED.h>
 
 // Définir le nombre de LED sur mon anneau
