@@ -5,11 +5,6 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 
-//====================
-//Parametre de l'ecran
-//====================
-//Adafruit_SSD1306 display = Adafruit_SSD1306(128, 64);
-
 //=======================
 // Parametrer anneau led
 //=======================
@@ -166,7 +161,7 @@ void loop() {
   //get and print atmospheric pressure data
   display.setCursor(0, 48);
   display.print("PNM: ");
-  pression = (pressure + (bme280.calcAltitude(pressure)/8.3));
+  pression = (pressure + (bme280.calcAltitude(pressure) / 8.3));
   display.print(pression);
   display.println("Pa");
   display.display();
@@ -175,11 +170,18 @@ void loop() {
   //========================================================
   //Parametrer l'anneau de LED en fonction de l'humidité
   //========================================================
+  //Humidité trop basse
   if (bme280.getHumidity() <= 40) {
     fill_solid (leds, NUM_LEDS, CRGB::FireBrick);
     FastLED.show();
+  }*
+  //Humidité convenable
+  else if (bme280.getHumidity() <60 && bme280.getHumidity() > 40) {
+      fill_solid (leds, NUM_LEDS, CRGB::Green);
+      FastLED.show();
   }
-  else {
+  //Humidité trop élevée
+  else if (bme280.getHumidity() >= 60) {
     fill_solid (leds, NUM_LEDS, CRGB::OrangeRed);
     FastLED.show();
   }
