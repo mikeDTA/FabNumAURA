@@ -176,7 +176,7 @@ void loop() {
     FastLED.show();
   }*
   //Humidité convenable
-  else if (bme280.getHumidity() <60 && bme280.getHumidity() > 40) {
+  else if (bme280.getHumidity() > 40 && bme280.getHumidity() < 60) {
       fill_solid (leds, NUM_LEDS, CRGB::Green);
       FastLED.show();
   }
