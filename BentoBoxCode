@@ -1,0 +1,259 @@
+/********************************************************************
+   Réalisation d'une boite avec une serrure électronique
+   Un écran sur laquelle on affiche la question
+   Elle est chiffrée avec un code secret (à chiffre)
+   Qui permet de déverouiller la serrure électromagnétique
+   Solenoide en D9
+   Keypad en D2-D3-D4-D5-D6-D7-D8
+   Ecran LCD RGB en A4 SDA et A5 SCL
+   Anneau neopixel en D10
+ *******************************************************************/
+
+/********************************************************************
+   Mes librairies
+ *******************************************************************/
+// Libraries du keypad
+#include <Keypad.h>//https://github.com/Chris--A/Keypad
+// Librairie pour le LCD RGB
+#include <Wire.h>
+#include "rgb_lcd.h"
+// Librairie pour le LCD 
+#include <LiquidCrystal_I2C.h>
+// Librairie pour gerer les mots de passe
+#include <Password.h>
+// Librairie Anneau LED
+#include <FastLED.h>
+
+/********************************************************************
+  Parametrer anneau led
+/*******************************************************************/
+// How many leds in your strip?
+#define NUM_LEDS 12
+#define DATA_PIN 10  // A METTRE SUR LA 10
+#define BRIGHTNESS  32
+CRGB leds[NUM_LEDS];  // Define the array of leds
+
+/********************************************************************
+   Mon keypad 4x4
+ *******************************************************************/
+// Définition du nombre de ligne et colonne du keypad
+#define ROWS 4
+#define COLS 3
+
+//Réglage des chiffres et des lettres attribuées au keypad (intégré dans un tableau)
+const char kp4x4Keys[ROWS][COLS]  = {
+  {'1', '2', '3'},
+  {'4', '5', '6'},
+  {'7', '8', '9'},
+  {'*', '0', '#'}
+};
+
+// déclaration des broches pour chacune deslignes et des colonnes du keypad
+byte rowKp4x4Pin [4] = {8, 7, 6, 5};
+byte colKp4x4Pin [4] = {4, 3, 2};
+
+//On utilise la librairie pour déclarer le tableau et on lui donne un nom kp4x4
+Keypad kp4x4  = Keypad(makeKeymap(kp4x4Keys), rowKp4x4Pin, colKp4x4Pin, ROWS, COLS);
+
+/********************************************************************
+   Mon moteur solenoide
+ *******************************************************************/
+// Déclaration Broche solenoide
+int solenoidPin = 9;
+
+/********************************************************************
+   Mon écran LCD RGB
+   
+// pré réglage du lecteur lcd.rgb
+rgb_lcd lcd;
+const int colorR = 125;
+const int colorG = 0;
+const int colorB = 125;
+ *******************************************************************/
+
+/********************************************************************
+   Mon écran LCD I2C
+ *******************************************************************/
+LiquidCrystal_I2C lcd(0x27,16,2);  // set the LCD address to 0x27 for a 16 chars and 2 line display
+
+/********************************************************************
+   Mon mot de passe
+ *******************************************************************/
+// Réglage du mot de passe
+const String password = "230379";
+// Definir la longueur du password
+const int passwordLength = password.length();
+// Variable du nombre de chiffre tapée par l'utilisateur
+String userPassword;
+//Variable booleeenne pour verifier si le mot de passe est bon
+bool passwordBon;
+// la valeur du mot de passe tapé par l'utilisateur
+char currentKey;
+// Le nombre de tentative de l'utilisateur
+int testPassword = 0;
+// Le nombre max de tentatives
+int limitTest = 3;
+
+/********************************************************************
+   Mon setup
+ *******************************************************************/
+
+void setup() {
+  //On active le serial begin pour debug
+  Serial.begin(9600);
+  //================================================================================
+  // Choix des LED a adresser (en fonction des led sur le ruban)
+  //================================================================================
+  FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, NUM_LEDS);  // GRB ordering is assumed
+  FastLED.setMaxPowerInVoltsAndMilliamps(5, 40); // réglage de la puissance des led
+  // Definir le solenoid en tant que sortie
+  pinMode(solenoidPin, OUTPUT);
+  //digitalWrite(solenoidPin, LOW);
+  // Initialisation du lcd
+  lcd.init();
+  // Réglage ecranLCD's number of columns and rows:
+  lcd.begin(16, 2);
+  // Réglage des couleurs de l'ecran
+  //lcd.setRGB(colorR, colorG, colorB);
+  //retroeclairage
+  lcd.backlight();
+  // Imprimer un message sur le LCD.
+  lcd.print("Bienvenue");
+  delay(1000);
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Vous avez le code ?");
+  lcd.scrollDisplayRight();
+  delay(500);
+  lcd.scrollDisplayLeft();
+  delay(500);
+  lcd.scrollDisplayLeft();
+  delay(500);
+  lcd.scrollDisplayLeft();
+  delay(500);
+  lcd.scrollDisplayLeft();
+  delay(500);
+  lcd.clear();
+  lcd.setCursor(0, 1);
+  lcd.print("Tapez le code");
+}
+
+/********************************************************************
+   Ma boucle
+ *******************************************************************/
+void loop() {
+
+  /*
+    //  A chaque fois qu'on appuie sur une touche du clavier on récupère la valeur
+    char startKey = kp4x4.getKey();
+
+    // Si on a appuie sur l * on déclenche la demande de mot de passe on affiche dans le moniteur série la valeur
+    if (startKey == '*' ){
+     Serial.println(startKey);
+     lcd.clear();
+     lcd.setCursor(0, 0);
+     lcd.print("Entrer le code ?");
+     lcd.setCursor(0, 1);
+     lcd.print("_ _ _ _ _ _");
+     delay(5000);
+     userPassword = "";
+     testPassword = 0;
+     //return;
+    }
+  */
+  // On vérifie si on a atteint la limite d'essai autorisé
+  if (testPassword == limitTest) {
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Nombre d essai");
+    lcd.setCursor(0, 1);
+    lcd.print(testPassword);
+    delay(500);  //bloque le return mais sans ca le lcd s'affole
+    // allumer anneau led en rouge A FAIRE
+
+    // Le return sert à bloquer le script, on retourne à chaque fois en haut de la boucle et de ce fait la suite n'est pas executé
+    return;
+  }
+
+  // On récupère la valeur du clavier et on l'ajoute à la variable
+  currentKey = kp4x4.getKey();
+  if (currentKey != NO_KEY) {
+    userPassword += currentKey;
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print(userPassword);
+  }
+
+  // On vérifie si la longueur du mdp est bonne sinon on recommence en haut de la boucle
+  if (userPassword.length() == passwordLength) {
+
+
+    // On vérifie si le mot de passe est le bon avec celui tapé
+    if (password.equalsIgnoreCase(userPassword)) {
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("Essai correct");     
+      delay(100);
+        // On allume l'anneau led en vert 
+        fill_solid (leds, NUM_LEDS, CRGB::Green);
+        FastLED.show();
+        // On ouvre la serrure solenoide A FAIRE
+        digitalWrite(solenoidPin, HIGH);      //Switch Solenoid ON
+        delay(1000);
+        // Remettre le solenoid en position fermé en pressant sur une touche avec la boite maintenue fermé + consigne sur ecran lcd
+        digitalWrite(solenoidPin, LOW);      //Switch Solenoid FF
+      
+      // On remet a zero le compteur d'essai
+      testPassword = "0";
+      delay(2000);
+      // Imprimer un message sur le LCD.
+      lcd.clear();
+      lcd.print("Vous avez le code ?");
+      lcd.scrollDisplayRight();
+      delay(500);
+      lcd.scrollDisplayLeft();
+      delay(500);
+      lcd.scrollDisplayLeft();
+      delay(500);
+      lcd.scrollDisplayLeft();
+      delay(500);
+      lcd.scrollDisplayLeft();
+      delay(500);
+      lcd.clear();
+      lcd.setCursor(0, 1);
+      lcd.print("Tapez le code"); 
+      // Remise a zero di mot de passe tapé par l'utilisateur a chaque tentative
+      userPassword = "";
+    }
+
+    else if (password != userPassword) {
+      // Si le mdp est faux    
+      testPassword++;
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("Essai erreur");
+      // On allume l'anneau led en vert
+      fill_solid (leds, NUM_LEDS, CRGB::Red);
+      FastLED.show();
+      delay(500);
+      lcd.clear();
+      lcd.setCursor(0, 1);
+      lcd.print(testPassword, "Erreur");
+      // On allume l'anneau led en vert
+      fill_solid (leds, NUM_LEDS, CRGB::Red);
+      FastLED.show();
+      delay(1000);
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("recommencer");
+      lcd.setCursor(0, 1);
+      lcd.print("_ _ _ _ _ _");
+      //if (testPassword < 4) {
+        //return;
+      //}
+
+      // Remise a zero di mot de passe tapé par l'utilisateur a chaque tentative
+      userPassword = "";
+    }
+  }
+}
